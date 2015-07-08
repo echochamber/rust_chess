@@ -3,13 +3,13 @@ extern crate piston_window;
 extern crate piston;
 
 mod board;
-mod chess_piece;
-mod chess_board_cell;
+mod game;
 
-use chess_piece::*;
-use chess_board_cell::*;
+
+use board::{ChessBoardCell, ChessPieceType, ChessPiece, ChessPieceColor};
 
 fn main() {
-	let some_board = ChessBoardCell::from_string_with_contents("g5".to_string(), Some(ChessPiece::Rook));
+	let piece = ChessPiece { type_name: ChessPieceType::Rook, color: ChessPieceColor::Black};
+	let some_board = ChessBoardCell::from_string_with_contents("g5".to_string(), Some(ChessPieceType::Rook));
     println!("Hello, world! {:?}", some_board.coordinates_to_string());
 }
