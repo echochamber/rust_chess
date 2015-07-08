@@ -1,7 +1,149 @@
 
 use board::ChessPiece;
 use board::ChessBoard;
+use board::BoardCoordinates;
 
-// pub struct ChessGame<T> {
-// 	board: <T>
-// }
+#[allow(dead_code)]
+pub struct ChessGame {
+	board: ChessBoard<ChessPiece>
+}
+
+#[allow(dead_code)]
+impl ChessGame {
+	pub fn get_legal_moves_for_piece(piece: ChessPiece, current_pos: &BoardCoordinates) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+		match ChessPiece.type_name {
+			Rook => {
+				result.append(ChessGame::get_coordinates_for_row(current_pos.row))'
+				result.append(ChessGame::get_coordinates_for_col(current_pos.col));
+			},
+			Knight => {
+				result.append(ChessGame::get_knight_moves_for_coordinate(current_pos));
+			},
+			_ => {}
+		}
+
+		result
+	}
+
+	fn get_coordinates_for_row(row: u8) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+		for i in 0..7 {
+			result.push(BoardCoordinates {
+				row: row,
+				col: i
+			})
+		}
+
+		result
+	}
+
+	fn get_coordinates_for_col(col: u8) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+		for i in 0..7 {
+			result.push(BoardCoordinates {
+				row: i,
+				col: col
+			})
+		}
+
+		result
+	}
+
+	fn get_coordinates_for_diagonals(coordinate: &BoardCoordinates) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+
+		let mut current_col = coordinate.col;
+		let mut current_row = coordinate.row;
+
+		while current_col < 7 && current_row < 7 {
+			current_row += 1;
+			current_col += 1;
+			result.push(BoardCoordinates {
+				row: current_row,
+				col: current_col
+			})
+		}
+
+		current_col = coordinate.col;
+		current_row = coordinate.row;
+		while current_col > 0 && current_row > 0 {
+			current_row -= 1;
+			current_col -= 1;
+			result.push(BoardCoordinates {
+				row: current_row,
+				col: current_col
+			})
+		}
+
+		current_col = coordinate.col;
+		current_row = coordinate.row;
+		while current_col > 0 && current_row < 7 {
+			current_row += 1;
+			current_col -= 1;
+			result.push(BoardCoordinates {
+				row: current_row,
+				col: current_col
+			})
+		}
+
+		current_col = coordinate.col;
+		current_row = coordinate.row;
+		while current_col < 7 && current_row > 0 {
+			current_row -= 1;
+			current_col += 1;
+			result.push(BoardCoordinates {
+				row: current_row,
+				col: current_col
+			})
+		}
+
+		result
+	}
+
+	fn get_adjacent_coordinates(coordinate: &BoardCoordinates) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+		for &(col, row) in &[
+			(coordinate.col - 1, coordinate.row - 1),
+			(coordinate.col - 1, coordinate.row + 1),
+			(coordinate.col - 1, coordinate.row),
+			(coordinate.col + 1, coordinate.row - 1),
+			(coordinate.col + 1, coordinate.row + 1),
+			(coordinate.col + 1, coordinate.row),
+			(coordinate.col, coordinate.row - 1),
+			(coordinate.col, coordinate.row + 1)
+		] {
+			if (col <= 7 && col >= 0 && row <= 7 && row >= 0) {
+				result.push(BoardCoordinates {
+					row: row,
+					col: col
+				})
+			}
+		}
+
+		result
+	}
+
+	fn get_knight_moves_for_coordinate(coordinate: &BoardCoordinates) -> Vec<BoardCoordinates> {
+		let mut result: Vec<BoardCoordinates> = Vec::new();
+		for &(col, row) in &[
+			(coordinate.col - 2, coordinate.row - 1),
+			(coordinate.col - 2, coordinate.row + 1),
+			(coordinate.col + 2, coordinate.row - 1),
+			(coordinate.col + 2, coordinate.row + 1),
+			(coordinate.col - 1, coordinate.row - 2),
+			(coordinate.col - 1, coordinate.row + 2),
+			(coordinate.col + 1, coordinate.row - 2),
+			(coordinate.col + 1, coordinate.row + 2)
+		] {
+			if (col <= 7 && col >= 0 && row <= 7 && row >= 0) {
+				result.push(BoardCoordinates {
+					row: row,
+					col: col
+				})
+			}
+		}
+
+		result
+	}
+}
