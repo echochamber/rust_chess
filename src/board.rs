@@ -97,8 +97,8 @@ pub struct ChessBoardCell<T> {
 
 #[allow(dead_code)]
 impl<T> ChessBoardCell<T> {
-	pub fn get_coordinates(&self) -> BoardCoordinates {
-		self.coordinates
+	pub fn get_coordinates(&self) -> &BoardCoordinates {
+		&self.coordinates
 	}
 
 	// Grig coordinates converted to a string such as 'a6'
@@ -159,7 +159,36 @@ impl<T> ChessBoard<T> {
 		}
 	}
 
-	pub fn get_cell_contents(&self, col: usize, row: usize) -> &Option<T> {
-		self.columns[col][row].get_contents()
+	pub fn get_size(&self) -> u8 {
+		self.size
+	}
+
+	pub fn get_cell_at_coordinates(&self, coordinates: &BoardCoordinates) -> Option<&ChessBoardCell<T>> {
+		if self.size < coordinates.col || self.size < coordinates.row {
+			return None;
+		}
+
+		match self.columns.get(coordinates.col as usize) {
+			Some(rows) => { return rows.get(coordinates.row as usize); }
+			None => { return None; }
+		}
+	}
+
+	pub fn get_move_destination(&self, start_coordinates: &BoardCoordinates, horzontal: i8, vertical: i8) -> Option<&ChessBoardCell<T>> {
+		let final_col = start_coordinates.col as i8 + horzontal;
+		let final_row = start_coordinates.row as i8 + vertical;
+
+		if final_row < 0 || final_col < 0 {
+			return None;
+		}
+
+		match self.columns.iter().nth(final_col as usize) {
+			Some(rows) => {
+				return rows.iter().nth(final_row as usize);
+			}
+			None => {
+				return None;
+			}
+		}
 	}
 }
