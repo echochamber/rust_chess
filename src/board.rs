@@ -1,7 +1,8 @@
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ChessBoard<T> {
-	columns: [[ChessBoardCell<T>; 8]; 8]
+	size: u8,
+	columns: Vec<Vec<ChessBoardCell<T>>>
 }
 
 #[derive(Debug)]
@@ -96,7 +97,6 @@ pub struct ChessBoardCell<T> {
 
 #[allow(dead_code)]
 impl<T> ChessBoardCell<T> {
-
 	pub fn get_coordinates(&self) -> BoardCoordinates {
 		self.coordinates
 	}
@@ -121,6 +121,13 @@ impl<T> ChessBoardCell<T> {
 		}
 	}
 
+	pub fn from_coordinates(coordinates: BoardCoordinates) -> ChessBoardCell<T> {
+		ChessBoardCell {
+			coordinates: coordinates,
+			contents: None
+		}
+	}
+
 	pub fn get_contents(&self) -> &Option<T> {
 		&self.contents
 	}
@@ -128,6 +135,30 @@ impl<T> ChessBoardCell<T> {
 
 #[allow(dead_code)]
 impl<T> ChessBoard<T> {
+	pub fn new (size: u8) -> ChessBoard<T> {
+		
+		let mut columns: Vec<Vec<ChessBoardCell<T>>> = Vec::new();
+		for c in 0..size {
+			let mut column: Vec<ChessBoardCell<T>> = Vec::new();
+			for r in 0..size {
+				column.push(
+					ChessBoardCell::from_coordinates(
+						BoardCoordinates {
+							row: r,
+							col: c
+						}
+					)
+				)
+			}
+			columns.push(column);
+		}
+
+		ChessBoard {
+			size: size,
+			columns: columns
+		}
+	}
+
 	pub fn get_cell_contents(&self, col: usize, row: usize) -> &Option<T> {
 		self.columns[col][row].get_contents()
 	}

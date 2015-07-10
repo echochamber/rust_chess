@@ -1,5 +1,7 @@
 
+
 use board::ChessPiece;
+use board::ChessPieceType;
 use board::ChessBoard;
 use board::BoardCoordinates;
 
@@ -10,17 +12,36 @@ pub struct ChessGame {
 
 #[allow(dead_code)]
 impl ChessGame {
+
+	pub fn new(board: ChessBoard<ChessPiece>) -> ChessGame {
+		ChessGame {
+			board: board
+		}
+	}
+
 	pub fn get_legal_moves_for_piece(piece: ChessPiece, current_pos: &BoardCoordinates) -> Vec<BoardCoordinates> {
 		let mut result: Vec<BoardCoordinates> = Vec::new();
-		match ChessPiece.type_name {
-			Rook => {
-				result.append(ChessGame::get_coordinates_for_row(current_pos.row))'
-				result.append(ChessGame::get_coordinates_for_col(current_pos.col));
+		match piece.type_name {
+			ChessPieceType::Rook => {
+				result.append(&mut ChessGame::get_coordinates_for_row(current_pos.row));
+				result.append(&mut ChessGame::get_coordinates_for_col(current_pos.col));
 			},
-			Knight => {
-				result.append(ChessGame::get_knight_moves_for_coordinate(current_pos));
+			ChessPieceType::Knight => {
+				result.append(&mut ChessGame::get_knight_moves_for_coordinate(current_pos));
 			},
-			_ => {}
+			ChessPieceType::Bishop => {
+				result.append(&mut ChessGame::get_coordinates_for_diagonals(current_pos));
+			},
+			ChessPieceType::Queen => {
+				result.append(&mut ChessGame::get_coordinates_for_diagonals(current_pos));
+				result.append(&mut ChessGame::get_coordinates_for_row(current_pos.row));
+				result.append(&mut ChessGame::get_coordinates_for_col(current_pos.col));
+			},
+			ChessPieceType::King => {
+				result.append(&mut ChessGame::get_adjacent_coordinates(current_pos));	
+			}
+			ChessPieceType::Pawn => {}
+
 		}
 
 		result
