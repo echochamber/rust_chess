@@ -1,11 +1,11 @@
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct ChessBoard<T> {
+pub struct ChessBoard<T: Clone> {
 	size: u8,
 	columns: Vec<Vec<ChessBoardCell<T>>>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 pub enum ChessPieceType {
 	Pawn,
@@ -16,18 +16,41 @@ pub enum ChessPieceType {
 	King
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Direction {
+	Up,
+	Down
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(dead_code)]
 pub enum ChessPieceColor {
 	Black,
 	White
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 pub struct ChessPiece {
-	pub type_name: ChessPieceType,
-	pub color: ChessPieceColor
+	type_name: ChessPieceType,
+	color: ChessPieceColor
+}
+
+impl ChessPiece {
+	pub fn new(type_name: ChessPieceType, color: ChessPieceColor) -> ChessPiece {
+		ChessPiece {
+			type_name: type_name,
+			color: color
+		}
+	}
+
+	pub fn get_type(&self) -> ChessPieceType {
+		self.type_name
+	}
+
+	pub fn get_color(&self) -> ChessPieceColor {
+		self.color
+	}
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -37,6 +60,16 @@ pub struct BoardCoordinates {
 	pub col: u8
 }
 
+impl Into<BoardCoordinates> for (u8, u8) {
+	fn into(self) -> BoardCoordinates {
+		match self {
+			(col, row) => BoardCoordinates {
+				col: col,
+				row: row
+			}
+		}
+	}
+}
 
 #[allow(dead_code)]
 impl ToString for BoardCoordinates {
@@ -90,13 +123,13 @@ impl BoardCoordinates {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct ChessBoardCell<T> {
+pub struct ChessBoardCell<T: Clone> {
 	coordinates: BoardCoordinates,
 	contents: Option<T> // What piece is occupying the cell
 }
 
 #[allow(dead_code)]
-impl<T> ChessBoardCell<T> {
+impl<T: Clone> ChessBoardCell<T> {
 	pub fn get_coordinates(&self) -> &BoardCoordinates {
 		&self.coordinates
 	}
@@ -128,13 +161,37 @@ impl<T> ChessBoardCell<T> {
 		}
 	}
 
-	pub fn get_contents(&self) -> &Option<T> {
-		&self.contents
+	pub fn get_contents(&self) -> Option<T> {
+		self.contents.clone()
+	}
+
+	pub fn set_contents(&mut self, contents: Option<T>) {
+		self.contents = contents;
+	}
+
+	pub fn is_empty(&self) -> bool {
+		match self.contents {
+			Some(..) => false,
+			None => true
+		}
+	}
+}
+
+impl<'a> ChessBoardCell<ChessPiece> {
+	pub fn contains_piece_of_color(&self, color: ChessPieceColor) -> bool {
+		match self.contents {
+			Some(piece) => {
+				return piece.color == color;
+			},
+			None => {
+				return false;
+			}
+		}
 	}
 }
 
 #[allow(dead_code)]
-impl<T> ChessBoard<T> {
+impl<T: Clone> ChessBoard<T> {
 	pub fn new (size: u8) -> ChessBoard<T> {
 		
 		let mut columns: Vec<Vec<ChessBoardCell<T>>> = Vec::new();
@@ -163,15 +220,35 @@ impl<T> ChessBoard<T> {
 		self.size
 	}
 
-	pub fn get_cell_at_coordinates(&self, coordinates: &BoardCoordinates) -> Option<&ChessBoardCell<T>> {
+	pub fn get_contents_at_coordinates(&self, coordinates: &BoardCoordinates) -> Result<Option<T>, &'static str> {
 		if self.size < coordinates.col || self.size < coordinates.row {
-			return None;
+			return Err("Invalid coordinates");
 		}
 
 		match self.columns.get(coordinates.col as usize) {
-			Some(rows) => { return rows.get(coordinates.row as usize); }
-			None => { return None; }
+			Some(rows) => {
+				match rows.get(coordinates.row as usize) {
+					Some(cell) => {
+						return Ok(cell.get_contents())
+					},
+					None => {
+						return Err("Invalid coordinates");
+					}
+				}
+			},
+			None => { return Err("Invalid coordinates"); }
 		}
+	}
+
+	pub fn set_contents_at_coordinates(&mut self, coordinates: &BoardCoordinates, contents: Option<T>) {
+		if self.size < coordinates.col || self.size < coordinates.row {
+			panic!("Coordinates are out of bounds of the board");
+		}
+
+		self.columns
+			.get_mut(coordinates.col as usize).unwrap()
+			.get_mut(coordinates.row as usize).unwrap()
+			.set_contents(contents);
 	}
 
 	pub fn get_move_destination(&self, start_coordinates: &BoardCoordinates, horzontal: i8, vertical: i8) -> Option<&ChessBoardCell<T>> {
@@ -189,6 +266,48 @@ impl<T> ChessBoard<T> {
 			None => {
 				return None;
 			}
+		}
+	}
+
+	pub fn move_contents(&mut self, start_coordinates: &BoardCoordinates, end_coordinates: &BoardCoordinates)
+	{
+		if start_coordinates.col > self.size || start_coordinates.row > self.size || 
+			end_coordinates.col > self.size || end_coordinates.row > self.size
+		{
+				panic!("Moving contents from or outside of board")
+		}
+		// Todo, figure out how to use Cell, RC, Refcell ect... 
+		// so that contents don't always have to be pased by value
+		let contents = self.columns
+			.get_mut(start_coordinates.col as usize).unwrap()
+			.get_mut(start_coordinates.row as usize).unwrap()
+			.get_contents();
+		{
+			self.columns
+				.get_mut(end_coordinates.col as usize).unwrap()
+				.get_mut(end_coordinates.row as usize).unwrap()
+				.set_contents(contents)
+			;	
+		}
+
+		self.columns
+			.get_mut(start_coordinates.col as usize).unwrap()
+			.get_mut(start_coordinates.row as usize).unwrap()
+			.set_contents(None);
+	}
+}
+
+#[derive(Debug)]
+pub struct ChessMove {
+	pub start_coordinates: BoardCoordinates,
+	pub end_coordinates: BoardCoordinates
+}
+
+impl ChessMove {
+	pub fn new(start_coordinates: &BoardCoordinates, end_coordinates: &BoardCoordinates) -> ChessMove {
+		ChessMove {
+			start_coordinates: start_coordinates.clone(),
+			end_coordinates: end_coordinates.clone()
 		}
 	}
 }
