@@ -1,6 +1,11 @@
+use std::fmt::Debug;
+use view::Renderable;
+use opengl_graphics::GlGraphics;
+use piston_window::*;
+
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct ChessBoard<T: Clone> {
+pub struct ChessBoard<T: Clone + Debug> {
 	size: u8,
 	columns: Vec<Vec<ChessBoardCell<T>>>
 }
@@ -27,6 +32,16 @@ pub enum Direction {
 pub enum ChessPieceColor {
 	Black,
 	White
+}
+
+impl ChessPieceColor {
+
+	pub fn opposite_color(&self) -> ChessPieceColor {
+		match self {
+			&ChessPieceColor::Black => ChessPieceColor::White,
+			&ChessPieceColor::White => ChessPieceColor::Black
+		}
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,6 +75,7 @@ pub struct BoardCoordinates {
 	pub col: u8
 }
 
+// (x, y) coordinates
 impl Into<BoardCoordinates> for (u8, u8) {
 	fn into(self) -> BoardCoordinates {
 		match self {
@@ -123,13 +139,13 @@ impl BoardCoordinates {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct ChessBoardCell<T: Clone> {
+pub struct ChessBoardCell<T: Clone + Debug> {
 	coordinates: BoardCoordinates,
 	contents: Option<T> // What piece is occupying the cell
 }
 
 #[allow(dead_code)]
-impl<T: Clone> ChessBoardCell<T> {
+impl<T: Clone + Debug> ChessBoardCell<T> {
 	pub fn get_coordinates(&self) -> &BoardCoordinates {
 		&self.coordinates
 	}
@@ -161,8 +177,8 @@ impl<T: Clone> ChessBoardCell<T> {
 		}
 	}
 
-	pub fn get_contents(&self) -> Option<T> {
-		self.contents.clone()
+	pub fn get_contents(&self) -> &Option<T> {
+		&self.contents
 	}
 
 	pub fn set_contents(&mut self, contents: Option<T>) {
@@ -191,7 +207,7 @@ impl<'a> ChessBoardCell<ChessPiece> {
 }
 
 #[allow(dead_code)]
-impl<T: Clone> ChessBoard<T> {
+impl<T: Clone + Debug> ChessBoard<T> {
 	pub fn new (size: u8) -> ChessBoard<T> {
 		
 		let mut columns: Vec<Vec<ChessBoardCell<T>>> = Vec::new();
@@ -220,7 +236,7 @@ impl<T: Clone> ChessBoard<T> {
 		self.size
 	}
 
-	pub fn get_contents_at_coordinates(&self, coordinates: &BoardCoordinates) -> Result<Option<T>, &'static str> {
+	pub fn get_contents_at_coordinates(&self, coordinates: &BoardCoordinates) -> Result<&Option<T>, &'static str> {
 		if self.size < coordinates.col || self.size < coordinates.row {
 			return Err("Invalid coordinates");
 		}
@@ -277,23 +293,71 @@ impl<T: Clone> ChessBoard<T> {
 				panic!("Moving contents from or outside of board")
 		}
 		// Todo, figure out how to use Cell, RC, Refcell ect... 
-		// so that contents don't always have to be pased by value
-		let contents = self.columns
-			.get_mut(start_coordinates.col as usize).unwrap()
-			.get_mut(start_coordinates.row as usize).unwrap()
-			.get_contents();
-		{
-			self.columns
-				.get_mut(end_coordinates.col as usize).unwrap()
-				.get_mut(end_coordinates.row as usize).unwrap()
-				.set_contents(contents)
-			;	
-		}
+		// so that contents don't have to be cloned to do this
+		let contents = match self.get_contents_at_coordinates(start_coordinates) {
+			Ok(contents_at_coordinates) => {
+				contents_at_coordinates.clone()
+			},
+			Err(e) => { panic!("{}", e) }
+		};
+		self.set_contents_at_coordinates(start_coordinates, None);
+		self.set_contents_at_coordinates(end_coordinates, contents);
+	}
+}
 
-		self.columns
-			.get_mut(start_coordinates.col as usize).unwrap()
-			.get_mut(start_coordinates.row as usize).unwrap()
-			.set_contents(None);
+impl ChessBoard<ChessPiece> {
+	pub fn fresh_game(&mut self, bottom_player_color: ChessPieceColor) {
+		for (i, r) in self.columns.iter_mut().enumerate() {
+			for board_cell in r.iter_mut() {
+				let contents = ChessBoard::get_contents_for_starting_coordinates(bottom_player_color, board_cell.get_coordinates());
+				board_cell.set_contents(contents);
+			}
+		}
+	}
+
+	fn get_contents_for_starting_coordinates(bottom_player_color: ChessPieceColor, coordinates: &BoardCoordinates) -> Option<ChessPiece> {
+		let &BoardCoordinates{row, col} = coordinates;
+		match (col, row) {
+			(_, 1) => {
+				return Some(ChessPiece::new(ChessPieceType::Pawn, bottom_player_color));
+			},
+			(_, 6) => {
+				return Some(ChessPiece::new(ChessPieceType::Pawn, bottom_player_color.opposite_color()));
+			},
+			(0, 0) | (7, 0) => {
+				return Some(ChessPiece::new(ChessPieceType::Rook, bottom_player_color));	
+			},
+			(1, 0) | (6, 0) => {
+				return Some(ChessPiece::new(ChessPieceType::Knight, bottom_player_color));	
+			},
+			(2, 0) | (5, 0) => {
+				return Some(ChessPiece::new(ChessPieceType::Bishop, bottom_player_color));	
+			},
+			(3 , 0) => {
+				return Some(ChessPiece::new(ChessPieceType::King, bottom_player_color));	
+			},
+			(4, 0) => {
+				return Some(ChessPiece::new(ChessPieceType::Queen, bottom_player_color));	
+			},
+			(0, 7) | (7, 7) => {
+				return Some(ChessPiece::new(ChessPieceType::Rook, bottom_player_color.opposite_color()));	
+			},
+			(1 , 7) | (6, 7) => {
+				return Some(ChessPiece::new(ChessPieceType::Knight, bottom_player_color.opposite_color()));	
+			},
+			(2, 7) | (5, 7) => {
+				return Some(ChessPiece::new(ChessPieceType::Bishop, bottom_player_color.opposite_color()));	
+			},
+			(4 , 7) => {
+				return Some(ChessPiece::new(ChessPieceType::King, bottom_player_color.opposite_color()));	
+			},
+			(3, 7) => {
+				return Some(ChessPiece::new(ChessPieceType::Queen, bottom_player_color.opposite_color()));	
+			},
+			_ => { 
+				return None
+			}
+		}
 	}
 }
 
@@ -310,4 +374,53 @@ impl ChessMove {
 			end_coordinates: end_coordinates.clone()
 		}
 	}
+}
+
+impl Renderable for ChessBoard<ChessPiece> {
+	fn draw(&self, window: &PistonWindow) {
+		&self.columns.first().unwrap().first().unwrap().draw(window);
+		return;
+		for row in &self.columns {
+			for board_cell in row {
+				board_cell.draw(window);
+				return;
+			}
+		};
+
+		// Todo, also draw the boarders between cells?
+	}
+}
+
+impl Renderable for ChessBoardCell<ChessPiece> {
+	fn draw(&self, window: &PistonWindow) {
+	    match self.contents {
+	    	// Todo: Lookup ref keyword
+	    	Some(ref contents) => {
+	    		window.draw_2d(|c, gl| {
+	    			draw_chess_piece_sprite(window, contents, (200f64, 200f64));
+	    		})
+	    	},
+	    	None => {}
+	    }
+	}
+}
+
+pub fn draw_chess_piece_sprite(window: &PistonWindow, piece: &ChessPiece, position: (f64, f64))
+{
+	let assets = ::find_folder::Search::ParentsThenKids(3, 3)
+	.for_folder("sprites").unwrap();
+
+	let tex = ::std::rc::Rc::new(::piston_window::Texture::from_path(
+        &mut *window.factory.borrow_mut(),
+        assets.join("0_bishop.png"),
+        ::piston_window::Flip::None,
+        &::piston_window::TextureSettings::new()
+    ).unwrap());
+
+    let mut sprite = ::sprite::Sprite::from_texture(tex.clone());
+    sprite.set_position(position.0, position.1);
+
+    window.draw_2d(|c, gl| {
+    	sprite.draw(c.transform, gl);
+    });
 }

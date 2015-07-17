@@ -1,5 +1,8 @@
 use board::*;
 use std::collections::HashMap;
+use view::Renderable;
+use opengl_graphics::GlGraphics;
+use piston_window::*;
 
 #[derive(Debug)]
 pub struct ChessGame {
@@ -30,6 +33,10 @@ impl ChessGame {
 		game
 	}
 
+	pub fn initialize_pieces(&mut self) {
+		self.board.fresh_game(ChessPieceColor::Black);
+	}
+
 	// Temporarily public for testing stuff
 	pub fn set_contents(&mut self, piece: Option<ChessPiece>, coordinates: &BoardCoordinates) {
 		self.board.set_contents_at_coordinates(coordinates, piece);
@@ -42,29 +49,29 @@ impl ChessGame {
 	pub fn get_legal_moves(&self, current_pos: &BoardCoordinates) -> Vec<ChessMove> {
 		let mut result: Vec<ChessMove> = Vec::new();
 		match self.board.get_contents_at_coordinates(current_pos) {
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::Rook => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::Rook => {
 				result.append(&mut self.get_vertical_moves(&piece, current_pos));
 				result.append(&mut self.get_horzontal_moves(&piece, current_pos));
 			},
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::Knight => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::Knight => {
 				result.append(&mut self.get_knight_moves(&piece, current_pos));
 			},
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::Bishop => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::Bishop => {
 				result.append(&mut self.get_diagonal_moves(&piece, current_pos));
 			},
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::Queen => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::Queen => {
 				result.append(&mut self.get_diagonal_moves(&piece, current_pos));
 				result.append(&mut self.get_vertical_moves(&piece, current_pos));
 				result.append(&mut self.get_horzontal_moves(&piece, current_pos));
 			},
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::King => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::King => {
 				result.append(&mut self.get_adjacent_moves(&piece, current_pos));	
 			},
-			Ok(Some(piece)) if piece.get_type() == ChessPieceType::Pawn => {
+			Ok(&Some(piece)) if piece.get_type() == ChessPieceType::Pawn => {
 				result.append(&mut self.get_pawn_moves(&piece, current_pos));
 			},
-			Ok(Some(..)) => { /* Some other piece type I guess */ },
-			Ok(None) => { /* Space was empty */ },
+			Ok(&Some(..)) => { /* Some other piece type I guess */ },
+			Ok(&None) => { /* Space was empty */ },
 			Err(e) => panic!("{}", e)
 		}
 
@@ -261,6 +268,10 @@ impl ChessGame {
 		result
 	}
 
+	pub fn get_board(&self) -> &ChessBoard<ChessPiece> {
+		&self.board
+	}
+
 	fn get_valid_move(
 		&self,
 		piece: & ChessPiece,
@@ -274,5 +285,12 @@ impl ChessGame {
 			},
 			_ => { None }
 		}
+	}
+}
+
+impl Renderable for ChessGame {
+	fn draw(&self, window: &PistonWindow) {
+		self.board.draw(window);
+	    // Maybe add some other stuff to draw later.
 	}
 }
